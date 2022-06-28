@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Wifi QR code generator</title>
+
+  <meta charset="utf-8">
+  <meta name="author" content="Karsten Krohn">
+  <meta name="description" content="Wifi QR code generator">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://code.jquery.com https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:">
+
+  <link rel="icon">
+  <link rel="license" href="https://www.gnu.org/licenses/gpl-3.0.html" title="GNU GPL 3.0 or later">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css" integrity="sha384-zCbKRCUGaJDkqS1kPbPd7TveP5iyJE0EjAuZQTgFLD2ylzuqKfdKlfG/eSrtxUkn" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:500,400">
+
+  <script src="https://code.jquery.com/jquery-3.6.0.slim.min.js" integrity="sha256-u7e5khyithlIdTpu22PHhENmPcRdFiHRjhAuHcs05RI=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/gh/lrsjng/jquery-qrcode@v0.18.0/dist/jquery-qrcode.min.js" integrity="sha384-W+CodFEp2EiGOM49HsUJwCpf58Vkgsx5CtgCl6bQJiAfGb+ndvp/fE8dZtI9fnUD" crossorigin="anonymous"></script>
+<style>
+body {
+  margin-bottom: 100px;
+}
+@media (min-width: 768px) {
+  .container {
+    max-width: 770px;
+  }
+}
+
+header {
+  text-align: center;
+}
+h1 {
+  font-size: 4em;
+  font-weight: 700;
+}
+h2 {
+  font-size: 1.5em;
+  font-weight: 400;
+}
+input:invalid {
+  border-color: #dc3545;
+}
+
+#uri {
+  color: gray;
+}
+#uri:focus {
+  color: inherit;
+}
+</style>
+</head>
+<body>
+  <header class="mt-4">
+    <h1 itemprop="name">Wifi QR code generator</h1>
+    <h2 itemprop="description">Enter your Wifi data, then let other scan them to join.</h2>
+  </header>
+
+  <div id="container" class="container">
+    <hr>
+
+    <p>This is a Wifi QR code generator made in JavaScript that helps you make QR codes from Wifi secrets.</p>
+
+    <hr>
+
+    <p>
+      <select class="form-control" id="type" autocomplete="off">
+        <option value="WPA">WPA/WPA2/WPA3</option>
+        <option value="WEP">WEP</option>
+        <option value="nopass">No encryption</option>
+      </select>
+    </p>
+
+    <p><input class="form-control" type="search" id="ssid" placeholder="SSID &mdash; Required" autocomplete="off" spellcheck="false"></p>
+
+    <div id="advanced_options_container">
+      <p><input class="form-control" type="search" id="passphrase" placeholder="Passphrase &mdash; Required" autocomplete="off" spellcheck="false"></p>
+    </div>
+
+    <div class="custom-control custom-checkbox">
+      <p><input class="custom-control-input" type="checkbox" id="ishidden" autocomplete="off"><label class="custom-control-label" for="ishidden">Hidden network</label></p>
+    </div>
+
+    <hr>
+    <p><input class="form-control" readonly="readonly" type="text" id="uri" placeholder="otpauth://" autocomplete="off" spellcheck="false"></p>
+
+    <input class="form-control-range" type="range" id="size" value="200" min="50" max="650" title="QR Code Size" autocomplete="off">
+
+    <div class="p-4 text-center" id="qr"></div>
+
+    <hr>
+
+    <ul>
+      <li>Made by <a href="https://krohn.github.io/">Karsten Krohn</a>.</li>
+      <li>Get <a href="https://github.com/krohn/wifi-qr">the source code</a>.</li>
+      <li>Inspired by <a href="https://stefansundin.github.io/">Stefan Sundin</a>.</li>
+      <li>Get <a href="https://github.com/stefansundin/2fa-qr">Stefan's source code</a>.</li>
+      <li>Uses <a href="https://larsjung.de/jquery-qrcode/">jquery-qrcode</a> and <a href="https://github.com/stefansundin/qr-detector.js">QrDetector</a>.</li>
+      <li>See <a href="https://github.com/google/google-authenticator/wiki/Key-Uri-Format">the docs</a> for the URI format.</li>
+    </ul>
+  </div>
+
+<script>
+// generate a nice QR code for the favicon
+$("#qr").empty().qrcode({
+  render: "image",
+  text: "krohn"
+});
+document.querySelector("link[rel=icon]").href = $("#qr img").prop("src");
+
+const container = document.getElementById("container");
+const type = document.getElementById("type");
+const ssid = document.getElementById("ssid");
+const passphrase = document.getElementById("passphrase");
+const ishidden = document.getElementById("ishidden");
+const ishidden_container = document.getElementById("ishidden_container");
+
+function type_changed(e) {
+  passphrase.classList.toggle("d-none", type.value === "nopass");
+}
+
+function ishidden_changed() {
+  ishidden_container.classList.toggle("d-none", ishidden.checked);
+}
+
+function generate_uri() {
+  let s = `WIFI:S:${encodeURIComponent(ssid.value)}`;
+  if (type.value != "nopass") {
+    s += `;T:${type.value};P:${encodeURIComponent(passphrase.value)}`;
+  }
+  if (ishidden.checked) {
+    s += ';H:true';
+  }
+  s += ';';
+
+  return s;
+}
+
+function update_uri() {
+  const s = generate_uri();
+  if (s === uri.value) {
+    return;
+  }
+
+  uri.value = s;
+  update_qr();
+
+  uri.classList.remove("is-invalid");
+  ssid.classList.toggle("is-invalid", ssid.value === "");
+  passphrase.classList.toggle("is-invalid", passphrase.value === "");
+}
+
+function update_qr() {
+  $("#qr").empty().qrcode({
+    text: uri.value,
+    size: size.value,
+  });
+}
+
+function decode(s) {
+  return s ? decodeURIComponent(s) : "";
+}
+
+function resize() {
+  const old_value = size.value;
+  size.max = Math.min(650, container.clientWidth - 2*(24+15));
+  if (size.value !== old_value) {
+    update_qr();
+  }
+}
+
+[
+  type, ssid, passphrase, ishidden
+].forEach(el => el.addEventListener("input", update_uri));
+type.addEventListener("input", type_changed);
+ishidden.addEventListener("input", ishidden_changed);
+size.addEventListener("input", update_qr);
+window.addEventListener("resize", resize);
+
+resize();
+update_uri();
+</script>
+</body>
+</html>
